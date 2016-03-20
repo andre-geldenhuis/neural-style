@@ -67,7 +67,7 @@ local function main(params)
     end
     cudnn.SpatialConvolution.accGradParameters = nn.SpatialConvolutionMM.accGradParameters -- ie: nop
   end
-  
+
   local loadcaffe_backend = params.backend
   if params.backend == 'clnn' then loadcaffe_backend = 'nn' end
   local cnn = loadcaffe.load(params.proto_file, params.model_file, loadcaffe_backend):float()
@@ -78,11 +78,11 @@ local function main(params)
       cnn:cl()
     end
   end
-  
+
   local content_image = image.load(params.content_image, 3)
   content_image = image.scale(content_image, params.image_size, 'bilinear')
   local content_image_caffe = preprocess(content_image):float()
-  
+
   local style_size = math.ceil(params.style_scale * params.image_size)
   local style_image_list = params.style_image:split(',')
   local style_images_caffe = {}
@@ -115,7 +115,7 @@ local function main(params)
   for i = 1, #style_blend_weights do
     style_blend_weights[i] = style_blend_weights[i] / style_blend_sum
   end
-  
+
 
   if params.gpu >= 0 then
     if params.backend ~= 'clnn' then
@@ -130,7 +130,7 @@ local function main(params)
       end
     end
   end
-  
+
   local content_layers = params.content_layers:split(",")
   local style_layers = params.style_layers:split(",")
 
@@ -238,7 +238,7 @@ local function main(params)
     end
   end
   collectgarbage()
-  
+
   -- Initialize the image
   if params.seed >= 0 then
     torch.manualSeed(params.seed)
@@ -249,7 +249,9 @@ local function main(params)
   elseif params.init == 'image' then
     img = content_image_caffe:clone():float()
   else
-    error('Invalid init type')
+      img = image.load(params.init, 3)
+      img = image.scale(img, params.image_size, 'bilinear')
+      img = preprocess(img):float()
   end
   if params.gpu >= 0 then
     if params.backend ~= 'clnn' then
@@ -258,7 +260,7 @@ local function main(params)
       img = img:cl()
     end
   end
-  
+
   -- Run it through the network once to get the proper size for the gradient
   -- All the gradients will come from the extra loss modules, so we just pass
   -- zeros into the top of the net on the backward pass.
@@ -344,7 +346,7 @@ local function main(params)
     end
   end
 end
-  
+
 
 function build_filename(output_image, iteration)
   local ext = paths.extname(output_image)
@@ -435,7 +437,7 @@ function StyleLoss:__init(strength, target, normalize)
   self.strength = strength
   self.target = target
   self.loss = 0
-  
+
   self.gram = GramMatrix()
   self.G = nil
   self.crit = nn.MSECriterion()
